@@ -10,22 +10,49 @@ import Foundation
 
 class CalculatorModel {
   
-  private enum Op {
+  private enum Op: Printable {
     case Operand(Double)
+//    case Variable(String)
+//    case Constant(String, () -> Double)
     case UnaryOperation(String, Double -> Double)
     case BinaryOperation(String, (Double, Double) -> Double)
+    
+    var description : String { //getter and setter, but no need to set, just retrieving the symbol
+      get {
+        switch self {
+        case .Operand(let operand):
+          return "\(operand)"
+//        case .Variable(let variable):
+//          return variable
+//        case .Constant(let symbol, _):
+//          return symbol
+        case .UnaryOperation(let symbol, _):
+          return symbol
+        case .BinaryOperation(let symbol, _):
+          return symbol
+        }
+      }
+    }
   }
   
   private var opStack = [Op]() //Stack of operations
   private var knownOps = [String : Op]() //Dictionary of symbols, to the operation to by done, functions can be types too
-
+  var variableValues = Dictionary<String, Double>()
+ 
   init() {
-    knownOps["+"] = Op.BinaryOperation("+", +)
-    knownOps["−"] = Op.BinaryOperation("−") { $1 - $0 }
-    knownOps["×"] = Op.BinaryOperation("×", *)
-    knownOps["÷"] = Op.BinaryOperation("÷") { $1 / $0 }
-    knownOps["±"] = Op.UnaryOperation("±") { $0 * -1 }
-    knownOps["√"] = Op.UnaryOperation("√", sqrt)
+    func learnOp(op : Op) {
+      knownOps[op.description] = op
+    }
+    learnOp(Op.BinaryOperation("+", +))
+    learnOp(Op.BinaryOperation("−") { $1 - $0 })
+    learnOp(Op.BinaryOperation("×", *))
+    learnOp(Op.BinaryOperation("÷") { $1 / $0 })
+    learnOp(Op.UnaryOperation("±") { $0 * -1 })
+    learnOp(Op.UnaryOperation("√", sqrt))
+    learnOp(Op.UnaryOperation("sin") { sin($0) })
+    learnOp(Op.UnaryOperation("cos") { cos($0) })
+    learnOp(Op.UnaryOperation("PI") { $0 * M_PI })
+    //Need to add sin cos, clearing? but UI is involved so...
   }
   
   private func evaluate(ops: [Op]) -> (result: Double?, remainingOps: [Op]) {
@@ -58,20 +85,32 @@ class CalculatorModel {
     return (nil, ops)
   }
   
+  func clearStack() {
+    opStack = []
+  }
+  
   func evaluate() -> Double? {
-    let (result, _) = evaluate(opStack) //only care about result
+    let (result, remainder) = evaluate(opStack) //only care about result
+    println("\(opStack) = \(result) with \(remainder) left over")
     return result
   }
   
   //Pushes number onto stack
-  func pushOperand (operand : Double) {
+  func pushOperand (operand : Double) -> Double? {
     opStack.append(Op.Operand(operand))
+    return evaluate()
   }
   
-  func performOperation (symbol : String) {
+//  func pushOperand (variable : String) -> String? {
+//    opStack.append(Op.Operand(variable))
+//    return evaluate()
+//  }
+  
+  func performOperation (symbol : String) -> Double? {
     //If the symbol is not nil when found, put the operation onto stack
     if let operation = knownOps[symbol] {
       opStack.append(operation)
     }
+    return evaluate()
   }
 }
